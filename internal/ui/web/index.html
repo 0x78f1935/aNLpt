@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>aNLpt</title>
+  <link rel="icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/"><img src="icon.svg" alt="" width="32" height="32"><span>aNLpt</span></a>
+    <span id="state" class="status"><i class="dot"></i><span id="state-text"></span></span>
+    <span class="grow"></span>
+    <button id="lang" class="ghost" type="button"></button>
+  </header>
+
+  <main>
+    <p id="banner" class="banner" role="status" hidden></p>
+
+    <section id="welcome" class="hero" hidden>
+      <img src="icon.svg" alt="" width="72" height="72">
+      <h1 data-t="welcomeTitle"></h1>
+      <p class="lead" data-t="welcomeText"></p>
+      <ol class="steps">
+        <li><b>1</b><span data-t="step1"></span></li>
+        <li><b>2</b><span data-t="step2"></span></li>
+        <li><b>3</b><span data-t="step3"></span></li>
+      </ol>
+      <button id="sign-in" class="primary big" type="button" data-t="signIn"></button>
+      <p id="waiting" class="muted" hidden><span class="spinner"></span> <span data-t="waitingForBrowser"></span></p>
+    </section>
+
+    <div id="app" hidden>
+      <section id="autostart-question" class="card question" hidden>
+        <h2 data-t="autostartQuestion"></h2>
+        <p class="muted" data-t="autostartWhy"></p>
+        <div class="row wrap">
+          <button id="autostart-yes" class="primary" type="button" data-t="autostartYes"></button>
+          <button id="autostart-no" class="ghost" type="button" data-t="autostartNo"></button>
+        </div>
+      </section>
+
+      <section id="grace" class="card grace" role="alert" hidden></section>
+
+      <section id="member" class="card member"></section>
+
+      <section id="stats" class="stats" aria-live="polite"></section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2 data-t="folders"></h2>
+          <button id="rescan" class="ghost small" type="button"><span id="rescan-icon" class="icon">↻</span> <span data-t="rescan"></span></button>
+        </div>
+        <div id="several"></div>
+        <div id="folder-list" class="folders"></div>
+
+        <form id="add-folder" class="add">
+          <input id="folder-path" type="text" autocomplete="off" spellcheck="false" required>
+          <button id="browse" class="ghost" type="button" data-t="browse" hidden></button>
+          <button id="share" class="primary" type="submit" data-t="share"></button>
+        </form>
+        <p id="folder-error" class="error" role="alert" hidden></p>
+        <p class="hint" data-t="folderHelp"></p>
+      </section>
+
+      <section id="unmatched-card" class="card warn" hidden>
+        <h2 data-t="unmatched"></h2>
+        <p class="hint" data-t="unmatchedText"></p>
+        <div id="unmatched-list" class="list"></div>
+      </section>
+
+      <section id="recognised-card" class="card" hidden>
+        <h2 data-t="recognised"></h2>
+        <div id="recognised-list" class="list"></div>
+      </section>
+
+      <section class="card">
+        <h2 data-t="settings"></h2>
+        <div id="settings" class="settings"></div>
+        <div class="row wrap actions">
+          <button id="open-site" class="ghost" type="button" data-t="openSite"></button>
+          <span class="grow"></span>
+          <button id="sign-out" class="ghost danger" type="button" data-t="signOut"></button>
+        </div>
+      </section>
+
+      <section id="transfers-card" class="card" hidden>
+        <div class="card-head">
+          <h2 data-t="transfers"></h2>
+          <span class="hint no-margin" data-t="transfersHint"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="transfers">
+            <thead>
+              <tr>
+                <th data-t="transferFile"></th>
+                <th data-t="transferStatus"></th>
+                <th class="num" data-t="transferSize"></th>
+                <th class="num" data-t="transferWhen"></th>
+              </tr>
+            </thead>
+            <tbody id="transfers"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer><span id="version"></span> · <span id="server"></span></footer>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="texts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

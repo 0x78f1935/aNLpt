@@ -1,0 +1,73 @@
+name: release
+
+# Builds aNLpt for Windows and Linux when a version is tagged (v1.2.3), and tests every
+# push. No secrets are used or needed: the program has none, and the builds are unsigned.
+#
+# What keeps the Windows build on the right side of a virus scanner, short of a paid
+# certificate: nothing is packed or obfuscated, the file says what it is (version
+# resource, icon, manifest, built with goversioninfo), it asks for no administrator
+# rights, and the build is reproducible (-trimpath, a fixed Go version, no timestamps), so
+# anybody can build the same file from the same tag and compare checksums.
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+      - name: gofmt
+        if: matrix.os == 'ubuntu-latest'
+        run: test -z "$(gofmt -l .)"
+
+  build:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      - name: Windows resources
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.4.1
+          IFS=. read -r major minor patch <<< "${VERSION%%-*}"
+          goversioninfo -64 \
+            -ver-major "$major" -ver-minor "$minor" -ver-patch "$patch" \
+            -product-ver-major "$major" -product-ver-minor "$minor" -product-ver-patch "$patch" \
+            -product-version "$VERSION" \
+            -o cmd/anlpt/resource_windows_amd64.syso build/windows/versioninfo.json
+      - name: Build
+        run: |
+          mkdir dist
+          flags="-s -w -buildid= -X main.version=$VERSION"
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$flags -H=windowsgui" -o dist/aNLpt.exe ./cmd/anlpt
+          GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$flags" -o dist/anlpt-linux-amd64 ./cmd/anlpt
+          GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$flags" -o dist/anlpt-linux-arm64 ./cmd/anlpt
+          cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "aNLpt $VERSION" --generate-notes

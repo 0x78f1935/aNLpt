@@ -1,0 +1,4 @@
+# The same line endings everywhere, so gofmt and the checksums agree on every machine.
+* text=auto eol=lf
+*.ico binary
+*.png binary
