@@ -42,6 +42,7 @@ type fakeArchive struct {
 	delivered int
 	gaveUp    string
 	tooEarly  int
+	features  string
 }
 
 func newFakeArchive(t *testing.T) *fakeArchive {
@@ -53,6 +54,7 @@ func newFakeArchive(t *testing.T) *fakeArchive {
 		sum := sha256.Sum256(body)
 		f.mu.Lock()
 		defer f.mu.Unlock()
+		f.features = r.Header.Get("X-Anlpt-Features")
 		if r.UserAgent() != "aNLpt/test" || r.Header.Get("Authorization") != "Bearer access" {
 			t.Errorf("piece %d came from %q with %q", index, r.UserAgent(), r.Header.Get("Authorization"))
 		}
@@ -321,5 +323,71 @@ func TestWhatIsKeptBackIsNotSent(t *testing.T) {
 	})
 	if !e.offered(file) {
 		t.Fatal("an episode that is for everybody was not on offer")
+	}
+}
+
+// Somebody watching from the middle of an episode wants only the pieces from there, and
+// only those leave the computer.
+func TestOnlyThePartAskedForIsSent(t *testing.T) {
+	f := newFakeArchive(t)
+	e := engineFor(t, f)
+	content := bytes.Repeat([]byte("Dutch television, one piece at a time. "), 300) // about 11 KB
+	file, _ := shareOne(t, e, content)
+	wanted := wantedFor(file, 1024)
+	wanted.FirstPiece, wanted.UntilPiece, wanted.SendUntil = 4, 7, 6
+	f.delivered = 4
+	sending := &Sending{Pieces: 3}
+
+	if err := e.send(context.Background(), wanted, sending); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for index := range f.received {
+		if index < 4 || index >= 7 {
+			t.Fatalf("piece %d was sent, and only 4 to 6 were asked for", index)
+		}
+	}
+	for index := 4; index < 7; index++ {
+		if !bytes.Equal(f.received[index], content[index*1024:(index+1)*1024]) {
+			t.Fatalf("piece %d is not that piece of the file", index)
+		}
+	}
+	if sending.Done != 3 {
+		t.Fatalf("the page was told %d of 3 pieces are done", sending.Done)
+	}
+}
+
+// An archive older than this program says nothing of a part: that is the whole file.
+func TestNoPartIsTheWholeFile(t *testing.T) {
+	cases := []struct {
+		first, until, pieces int
+		wantFirst, wantUntil int
+	}{
+		{0, 0, 11, 0, 11},
+		{4, 7, 11, 4, 7},
+		{4, 99, 11, 4, 11},
+		{-3, 5, 11, 0, 5},
+		{9, 5, 11, 5, 5},
+	}
+	for _, c := range cases {
+		first, until := api.Wanted{FirstPiece: c.first, UntilPiece: c.until, Pieces: c.pieces}.Part()
+		if first != c.wantFirst || until != c.wantUntil {
+			t.Fatalf("%+v gave %d to %d", c, first, until)
+		}
+	}
+}
+
+// Every request says what this version can do, so the archive asks only that of it.
+func TestItSaysWhatItCanDo(t *testing.T) {
+	f := newFakeArchive(t)
+	e := engineFor(t, f)
+	file, _ := shareOne(t, e, []byte("a short file"))
+
+	if err := e.send(context.Background(), wantedFor(file, 1024), &Sending{}); err != nil {
+		t.Fatal(err)
+	}
+	if f.features != "piece-range" {
+		t.Fatalf("it said %q", f.features)
 	}
 }

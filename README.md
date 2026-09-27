@@ -68,9 +68,9 @@ The source is public so that you can check this, and it is all in one file:
 | Sent to the archive | Never sent |
 | --- | --- |
 | The **name** of a shared folder | Where that folder is on your computer |
-| Names, sizes and dates of the **video files** inside it | Any other file. Subtitles, pictures and documents are never even listed |
+| Names, sizes and dates of the **video files** inside it, and of the **subtitle files** beside each one that carry its name (`Episode 3.srt`, `Episode 3.nl.srt`) | Any other file. Pictures, documents and other subtitle files are never even listed |
 | For each of those files, **who may download it** and **what it is spoken in**, where you set that for a series, a season or an episode | Which folders or files you set it on: aNLpt works it out here and only says the outcome per file |
-| A video file, when a member asks for it | Anything outside the folders you chose |
+| A video file, when a member asks for it, and its subtitle files when somebody watches it on the archive | Anything outside the folders you chose |
 | The name of your computer, your operating system, the aNLpt version | Anything else about your computer |
 
 How it is kept that way:

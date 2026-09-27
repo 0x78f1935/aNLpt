@@ -2,8 +2,9 @@
 //
 // It is kept in one small file on purpose. The source of this program is public so that
 // anybody can check what it sends, and this is where to look: the name of a shared folder
-// (never where it is), the names and sizes of the video files inside it, and, when
-// another member asks for one, the file itself. Nothing else leaves the computer.
+// (never where it is), the names and sizes of the video files inside it and of the
+// subtitle files named after them, and, when another member asks for one, the file
+// itself. Nothing else leaves the computer.
 package api
 
 import (
@@ -28,6 +29,13 @@ var ErrOver = errors.New("the transfer is over")
 
 // ErrNotYet means a piece was sent before the archive wanted it.
 var ErrNotYet = errors.New("that piece is not wanted yet")
+
+// Features is what this version can do beyond sending a whole file from its start, said
+// with every request (X-Anlpt-Features) so the archive only asks what it can:
+//
+//   - piece-range: send only the pieces from Wanted.FirstPiece up to Wanted.UntilPiece,
+//     which is how somebody watching can start in the middle of an episode.
+const Features = "piece-range"
 
 // Client talks to one archive as one member.
 type Client struct {
@@ -67,6 +75,7 @@ func (c *Client) do(ctx context.Context, method, path string, body io.Reader, he
 		req.Header.Set("Accept", "application/json")
 		// The archive's front door turns away programs that do not say who they are.
 		req.Header.Set("User-Agent", c.UserAgent)
+		req.Header.Set("X-Anlpt-Features", Features)
 
 		resp, err := c.HTTP.Do(req)
 		if err != nil {
@@ -227,6 +236,17 @@ type ReportedFile struct {
 	Language       string   `json:"language,omitempty"`
 	OtherLanguages []string `json:"other_languages,omitempty"`
 	MTime          int64    `json:"mtime"`
+	// Subtitles are the subtitle files beside it that carry its name, for whoever
+	// watches it on the archive.
+	Subtitles []ReportedSubtitle `json:"subtitles,omitempty"`
+}
+
+// ReportedSubtitle is one subtitle file beside a video: its name, never where it is.
+type ReportedSubtitle struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Size  int64  `json:"size"`
+	MTime int64  `json:"mtime"`
 }
 
 // Report sends one piece of what a folder holds. done goes on the last one.
@@ -274,13 +294,35 @@ type Wanted struct {
 	Size      int64  `json:"size"`
 	MTime     int64  `json:"mtime"`
 	PieceSize int64  `json:"piece_size"`
-	Pieces    int    `json:"pieces"`
+	// Pieces is how many pieces the whole file is.
+	Pieces int `json:"pieces"`
+	// FirstPiece and UntilPiece are the part of the file wanted: from the first, up to
+	// and not including the other. An archive older than this program says neither, and
+	// then it is the whole file.
+	FirstPiece int `json:"first_piece"`
+	UntilPiece int `json:"until_piece"`
 	// SendUntil is the first piece not to send yet.
 	SendUntil int `json:"send_until"`
 	// SendRate is the fastest the archive wants this sent, in bytes a second. It is
 	// decided over there so it is the same for everybody and can change without a new
 	// version of this program. Zero is no limit.
 	SendRate int `json:"send_rate"`
+}
+
+// Part is the pieces wanted, from first up to and not including until, never outside the
+// file however they were asked for.
+func (w Wanted) Part() (first, until int) {
+	first, until = w.FirstPiece, w.UntilPiece
+	if until <= 0 || until > w.Pieces {
+		until = w.Pieces
+	}
+	if first < 0 {
+		first = 0
+	}
+	if first > until {
+		first = until
+	}
+	return first, until
 }
 
 // Poll asks whether anybody wants a file. It is also how the archive knows this

@@ -1,5 +1,5 @@
 // Package scan looks through the folders a member chose to share and lists the video
-// files in them.
+// files in them, each with the subtitle files beside it that carry its name.
 //
 // It is also what keeps this program from ever sending a file its owner did not choose to
 // share. The archive never names a path: it asks for a file by an id, the id is only
@@ -19,14 +19,22 @@ import (
 )
 
 // Extensions are the containers the archive passes on. Anything else is not listed, so
-// subtitles, pictures and whatever else sits next to a video never leave the computer.
+// pictures, documents and whatever else sits next to a video never leave the computer.
 var Extensions = map[string]bool{
 	".mp4": true, ".m4v": true, ".mkv": true, ".avi": true, ".mov": true, ".wmv": true,
 	".mpg": true, ".mpeg": true, ".ts": true, ".webm": true, ".flv": true, ".vob": true,
 	".ogv": true, ".m2ts": true,
 }
 
-// File is one video file in a shared folder.
+// SubtitleExtensions are the subtitle files listed with a video: text, and small. Only
+// one beside a video and named after it ("Episode 3.srt", "Episode 3.nl.srt") is listed,
+// so that somebody watching that video on the archive can have its subtitles.
+var SubtitleExtensions = map[string]bool{".srt": true, ".vtt": true, ".ass": true, ".ssa": true}
+
+// MaxSubtitleSize is the largest subtitle file listed: a film's are tens of kilobytes.
+const MaxSubtitleSize = 2 * 1024 * 1024
+
+// File is one video file in a shared folder, or one subtitle file beside one.
 type File struct {
 	ID      string // stable for as long as the file stays where it is
 	Folder  string // the id of the shared folder it was found in
@@ -34,16 +42,20 @@ type File struct {
 	Abs     string // where it really is; never sent anywhere
 	Size    int64
 	ModTime int64 // seconds since 1970
+	// Subtitles are the subtitle files beside a video that carry its name.
+	Subtitles []File
 }
 
 // Index is every file that may be sent, by id.
 type Index struct {
 	mu    sync.RWMutex
 	files map[string]File
+	// subtitles are the subtitle files of the videos in files, which may be sent too.
+	subtitles map[string]File
 }
 
 // NewIndex returns an empty index.
-func NewIndex() *Index { return &Index{files: map[string]File{}} }
+func NewIndex() *Index { return &Index{files: map[string]File{}, subtitles: map[string]File{}} }
 
 // Replace swaps in what one scan of one folder found.
 func (ix *Index) Replace(folderID string, found []File) {
@@ -54,8 +66,16 @@ func (ix *Index) Replace(folderID string, found []File) {
 			delete(ix.files, id)
 		}
 	}
+	for id, file := range ix.subtitles {
+		if file.Folder == folderID {
+			delete(ix.subtitles, id)
+		}
+	}
 	for _, file := range found {
 		ix.files[file.ID] = file
+		for _, subtitle := range file.Subtitles {
+			ix.subtitles[subtitle.ID] = subtitle
+		}
 	}
 }
 
@@ -66,7 +86,10 @@ func (ix *Index) Drop(folderID string) { ix.Replace(folderID, nil) }
 func (ix *Index) Get(id string) (File, bool) {
 	ix.mu.RLock()
 	defer ix.mu.RUnlock()
-	file, ok := ix.files[id]
+	if file, ok := ix.files[id]; ok {
+		return file, true
+	}
+	file, ok := ix.subtitles[id]
 	return file, ok
 }
 
@@ -111,6 +134,7 @@ func Folder(folderID, root string) ([]File, error) {
 	}
 
 	var found []File
+	subtitles := map[string][]File{} // by the directory they are in
 	err = filepath.WalkDir(realRoot, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			// A directory that cannot be read is skipped, not a reason to give up on the rest.
@@ -129,7 +153,9 @@ func Folder(folderID, root string) ([]File, error) {
 		if entry.IsDir() {
 			return nil
 		}
-		if !Extensions[strings.ToLower(filepath.Ext(name))] {
+		extension := strings.ToLower(filepath.Ext(name))
+		subtitle := SubtitleExtensions[extension]
+		if !Extensions[extension] && !subtitle {
 			return nil
 		}
 		// WalkDir does not follow links to directories. A link to a file is followed
@@ -145,22 +171,54 @@ func Folder(folderID, root string) ([]File, error) {
 		if err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
 			return nil
 		}
+		if subtitle && info.Size() > MaxSubtitleSize {
+			return nil
+		}
 		relative, err := filepath.Rel(realRoot, path)
 		if err != nil {
 			return nil
 		}
 		relative = filepath.ToSlash(relative)
-		found = append(found, File{
+		file := File{
 			ID:      fileID(folderID, relative),
 			Folder:  folderID,
 			Path:    relative,
 			Abs:     real,
 			Size:    info.Size(),
 			ModTime: info.ModTime().Unix(),
-		})
+		}
+		if subtitle {
+			subtitles[filepath.Dir(relative)] = append(subtitles[filepath.Dir(relative)], file)
+		} else {
+			found = append(found, file)
+		}
 		return nil
 	})
+	for index, video := range found {
+		found[index].Subtitles = beside(video, subtitles[filepath.Dir(video.Path)])
+	}
 	return found, err
+}
+
+// beside picks the subtitle files that carry a video's name: the same name, or the same
+// name and a language ("Episode 3.nl.srt"). Any other is not that video's, and not listed.
+func beside(video File, candidates []File) []File {
+	stem := strings.ToLower(strings.TrimSuffix(filepath.Base(video.Path), filepath.Ext(video.Path)))
+	var picked []File
+	for _, candidate := range candidates {
+		name := strings.ToLower(filepath.Base(candidate.Path))
+		name = strings.TrimSuffix(name, filepath.Ext(name))
+		if name == stem {
+			picked = append(picked, candidate)
+			continue
+		}
+		language, found := strings.CutPrefix(name, stem+".")
+		if found && language != "" && len(language) <= 8 && !strings.Contains(language, ".") {
+			picked = append(picked, candidate)
+		}
+	}
+	sort.Slice(picked, func(i, j int) bool { return picked[i].Path < picked[j].Path })
+	return picked
 }
 
 func inside(root, path string) bool {

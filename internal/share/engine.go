@@ -386,9 +386,16 @@ func (e *Engine) scanAll(ctx context.Context) error {
 			batch := make([]api.ReportedFile, 0, end-start)
 			for _, file := range found[start:end] {
 				language, others := folder.LanguagesOf(file.Path)
+				var subtitles []api.ReportedSubtitle
+				for _, subtitle := range file.Subtitles {
+					subtitles = append(subtitles, api.ReportedSubtitle{
+						ID: subtitle.ID, Name: filepath.Base(subtitle.Path), Size: subtitle.Size, MTime: subtitle.ModTime,
+					})
+				}
 				batch = append(batch, api.ReportedFile{
 					ID: file.ID, Path: file.Path, Size: file.Size, MTime: file.ModTime,
 					Audience: folder.AudienceOf(file.Path), Language: language, OtherLanguages: others,
+					Subtitles: subtitles,
 				})
 			}
 			if err := e.API.Report(ctx, folder.ID, generation, batch, end == len(found)); err != nil {
@@ -449,7 +456,8 @@ func (e *Engine) start(ctx context.Context, wanted api.Wanted) {
 		e.mu.Unlock()
 		return
 	}
-	sending := &Sending{Pieces: wanted.Pieces, Size: wanted.Size, Started: time.Now()}
+	first, until := wanted.Part()
+	sending := &Sending{Pieces: until - first, Size: wanted.Size, Started: time.Now()}
 	e.active[wanted.ID] = sending
 	e.mu.Unlock()
 
@@ -535,7 +543,9 @@ func (e *Engine) send(ctx context.Context, wanted api.Wanted, sending *Sending) 
 	limit := newLimiter(slowest(wanted.SendRate, e.Config.Get().UploadKBps*1024))
 	piece := make([]byte, wanted.PieceSize)
 	sendUntil := wanted.SendUntil
-	for index := 0; index < wanted.Pieces; index++ {
+	// Somebody watching may want only part of the file: from where they are, on.
+	first, until := wanted.Part()
+	for index := first; index < until; index++ {
 		// The file has to be the one the archive was told about. One that was replaced
 		// since the last scan would arrive as something other than what was asked for.
 		info, err := handle.Stat()
@@ -581,7 +591,7 @@ func (e *Engine) send(ctx context.Context, wanted api.Wanted, sending *Sending) 
 		}
 		sendUntil = next
 		e.mu.Lock()
-		sending.Done = index + 1
+		sending.Done = index + 1 - first
 		e.mu.Unlock()
 	}
 	return nil
