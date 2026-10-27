@@ -25,8 +25,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - run: go vet ./...
@@ -44,15 +44,15 @@ jobs:
     env:
       CGO_ENABLED: "0"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
       - name: Windows resources
         run: |
-          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.4.1
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
           IFS=. read -r major minor patch <<< "${VERSION%%-*}"
           goversioninfo -64 \
             -ver-major "$major" -ver-minor "$minor" -ver-patch "$patch" \
