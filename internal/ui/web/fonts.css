@@ -1,0 +1,73 @@
+/* The faces the looks name (themes.css), from this program itself: the page asks nothing of
+   anybody else. Latin only, as the archive serves them. Their licence is fonts/LICENSE.md. */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "VT323";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/vt323-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Share Tech Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/share-tech-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Anton";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/anton-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Exo 2 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("fonts/exo-2-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Bodoni Moda Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 900;
+  src: url("fonts/bodoni-moda-latin-opsz-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("fonts/cormorant-garamond-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/libre-baskerville-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Jost Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("fonts/jost-latin-wght-normal.woff2") format("woff2-variations");
+}

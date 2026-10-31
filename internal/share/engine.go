@@ -306,6 +306,10 @@ func (e *Engine) refreshMember(ctx context.Context) error {
 	if !cfg.LanguageChosen && (preferred == "nl" || preferred == "en") && preferred != cfg.Language {
 		_ = e.Config.Update(func(c *config.Config) { c.Language = preferred })
 	}
+	// The look they see the archive in, kept for the next start.
+	if member.Theme != "" && member.Theme != cfg.Theme {
+		_ = e.Config.Update(func(c *config.Config) { c.Theme = member.Theme })
+	}
 	return nil
 }
 

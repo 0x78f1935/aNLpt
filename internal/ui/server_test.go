@@ -2,10 +2,12 @@ package ui
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -16,6 +18,7 @@ import (
 	"github.com/0x78f1935/aNLpt/internal/auth"
 	"github.com/0x78f1935/aNLpt/internal/config"
 	"github.com/0x78f1935/aNLpt/internal/share"
+	"github.com/0x78f1935/aNLpt/internal/update"
 )
 
 func start(t *testing.T) (*Server, string) {
@@ -259,5 +262,58 @@ func TestOnlyPathsInsideTheFolder(t *testing.T) {
 		if got, ok := insideFolder(raw); ok {
 			t.Errorf("%q was taken, as %q", raw, got)
 		}
+	}
+}
+
+// The page is drawn in the look the member sees the archive in (the owner, 2026-10-31), and
+// says so when a newer aNLpt is out; the looks' faces come from the program itself.
+func TestThePageIsToldItsLookANewerVersionAndGetsItsFaces(t *testing.T) {
+	server, address := start(t)
+	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"tag_name":"v9.0.0","html_url":"https://github.com/0x78f1935/aNLpt/releases/tag/v9.0.0"}`))
+	}))
+	defer github.Close()
+	server.Update = &update.Checker{Current: "1.0.0", UserAgent: "aNLpt/1.0.0", HTTP: http.DefaultClient, URL: github.URL}
+	if err := server.Update.Check(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Config.Update(func(cfg *config.Config) { cfg.Theme = "neon" }); err != nil {
+		t.Fatal(err)
+	}
+	jar, _ := cookiejar.New(nil)
+	browser := &http.Client{Jar: jar}
+	request, _ := http.NewRequest(http.MethodGet, address, nil)
+	status(t, browser, request)
+	base := strings.Split(address, "/?")[0]
+
+	response, err := browser.Get(base + "/api/state")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	var state struct {
+		Theme  string `json:"theme"`
+		Update *struct {
+			Version string `json:"version"`
+			URL     string `json:"url"`
+		} `json:"update"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Theme != "neon" {
+		t.Errorf("drawn in %q, want the look last heard of", state.Theme)
+	}
+	if state.Update == nil || state.Update.Version != "9.0.0" || !strings.HasPrefix(state.Update.URL, "https://github.com/") {
+		t.Errorf("told of %+v", state.Update)
+	}
+
+	font, err := browser.Get(base + "/fonts/vt323-latin-400-normal.woff2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer font.Body.Close()
+	if font.StatusCode != http.StatusOK || font.Header.Get("Content-Type") != "font/woff2" {
+		t.Errorf("a face came as %d %q", font.StatusCode, font.Header.Get("Content-Type"))
 	}
 }

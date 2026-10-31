@@ -36,6 +36,7 @@ import (
 	"github.com/0x78f1935/aNLpt/internal/browser"
 	"github.com/0x78f1935/aNLpt/internal/config"
 	"github.com/0x78f1935/aNLpt/internal/share"
+	"github.com/0x78f1935/aNLpt/internal/update"
 )
 
 //go:embed web
@@ -52,6 +53,8 @@ type Server struct {
 	// PickFolder shows the operating system's own "choose a folder" window, where there
 	// is one. Nil means the member types the path.
 	PickFolder func() (string, error)
+	// Update says whether a newer aNLpt is out. Nil asks nobody (a test, a build of one's own).
+	Update *update.Checker
 
 	token   string
 	address string
@@ -157,6 +160,17 @@ func fail(w http.ResponseWriter, status int, message string) {
 
 func (s *Server) state(w http.ResponseWriter, _ *http.Request) {
 	cfg := s.Config.Get()
+	status := s.Engine.Status()
+	// The look the member sees the archive in: as the archive last said, or as it said
+	// before this start while it has not answered yet.
+	theme := cfg.Theme
+	if status.Member != nil && status.Member.Theme != "" {
+		theme = status.Member.Theme
+	}
+	var newer *update.Release
+	if s.Update != nil {
+		newer = s.Update.Newer()
+	}
 	reply(w, http.StatusOK, map[string]any{
 		"version":         s.Version,
 		"server":          cfg.Server,
@@ -167,7 +181,9 @@ func (s *Server) state(w http.ResponseWriter, _ *http.Request) {
 		"scan_minutes":    cfg.ScanMinutes,
 		"upload_kbps":     cfg.UploadKBps,
 		"can_pick":        s.PickFolder != nil,
-		"status":          s.Engine.Status(),
+		"theme":           theme,
+		"update":          newer,
+		"status":          status,
 	})
 }
 

@@ -30,6 +30,10 @@ type Options struct {
 	OnQuit  func()
 	// Tick is called now and then, so the tooltip and the menu follow what is going on.
 	Tick <-chan struct{}
+	// Update is the line about a newer aNLpt, or "" while there is none; OnUpdate is
+	// what choosing it does (its download page).
+	Update   func() string
+	OnUpdate func()
 }
 
 // Run shows the icon and does not return until Quit is chosen. It has to be called from
@@ -43,6 +47,9 @@ func Run(options Options) {
 		}
 		systray.SetTitle("")
 		texts := options.Texts()
+		// A newer version, at the top where it is seen, and only while there is one.
+		newer := systray.AddMenuItem("", "")
+		newer.Hide()
 		open := systray.AddMenuItem(texts.Open, "")
 		pause := systray.AddMenuItem(texts.Pause, "")
 		systray.AddSeparator()
@@ -58,12 +65,20 @@ func Run(options Options) {
 				pause.SetTitle(texts.Pause)
 			}
 			systray.SetTooltip(options.Tooltip())
+			if line := options.Update(); line != "" {
+				newer.SetTitle(line)
+				newer.Show()
+			} else {
+				newer.Hide()
+			}
 		}
 		refresh()
 
 		go func() {
 			for {
 				select {
+				case <-newer.ClickedCh:
+					options.OnUpdate()
 				case <-open.ClickedCh:
 					options.OnOpen()
 				case <-pause.ClickedCh:

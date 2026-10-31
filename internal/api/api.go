@@ -174,6 +174,9 @@ type Member struct {
 	// ShowHolderName is what the member chose on their profile about their name next to
 	// their copies. A folder shared here starts out the same way.
 	ShowHolderName bool `json:"show_holder_name"`
+	// Theme is the look the member sees the archive in (stream, teletekst, ...): this
+	// program's page is drawn in the same one.
+	Theme string `json:"theme"`
 }
 
 // Me asks how the member stands: level, XP, and whether they may download.

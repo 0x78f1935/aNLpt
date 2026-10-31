@@ -2,6 +2,11 @@
 window.TEXTS = {
   nl: {
     language: 'English',
+    tagline: 'Delen met Archive NL',
+    updateTitle: 'aNLpt {version} is uit',
+    updateText: 'Je gebruikt nu {version}. Download de nieuwe, sluit deze af met het pictogram naast de klok en start de nieuwe: je mappen en instellingen blijven zoals ze zijn.',
+    updateDownload: 'Nieuwe versie downloaden',
+    fontsLicence: 'Lettertypen',
     welcomeTitle: 'Deel vanaf je eigen computer',
     welcomeText: 'aNLpt deelt de mappen die jij kiest met Archive NL. Geen Google Drive nodig, en andere leden zien nooit jouw computer of je adres: bestanden gaan via het archief.',
     step1: 'Log in met je account van Archive NL.',
@@ -141,6 +146,11 @@ window.TEXTS = {
   },
   en: {
     language: 'Nederlands',
+    tagline: 'Sharing with Archive NL',
+    updateTitle: 'aNLpt {version} is out',
+    updateText: 'You are using {version}. Download the new one, quit this one from the icon by the clock and start the new one: your folders and settings stay as they are.',
+    updateDownload: 'Download the new version',
+    fontsLicence: 'Fonts',
     welcomeTitle: 'Share from your own computer',
     welcomeText: 'aNLpt shares the folders you choose with Archive NL. No Google Drive needed, and other members never see your computer or your address: files travel through the archive.',
     step1: 'Sign in with your Archive NL account.',

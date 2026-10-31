@@ -25,6 +25,14 @@ learn theirs.
 Anything the archive cannot recognise is listed on the page with a button that takes you to
 Archive NL, where you pick the right title or add it to the catalogue.
 
+The page is drawn in the look you chose for Archive NL (Teletekst, Stream, Licht and the
+others), with the archive's own faces, which come with the program
+([`internal/ui/web/fonts`](internal/ui/web/fonts/LICENSE.md), SIL Open Font License).
+
+When a newer aNLpt is released, the page and the icon's menu say so, with a link to its
+download. Quit the running one from the icon, start the new one, and everything carries on
+as it was.
+
 ### Windows says "Windows protected your PC"
 
 aNLpt is not signed with a paid certificate, so SmartScreen warns the first time you start a
@@ -89,7 +97,11 @@ How it is kept that way:
   kept in the Windows Credential Manager or the Linux Secret Service.
 - **Its own page is for you only.** It listens on `127.0.0.1` and needs a token that is
   made up each time the program starts.
-- **No telemetry, no advertising, no automatic updates.**
+- **No telemetry, no advertising, no automatic updates.** Once a day aNLpt asks GitHub which
+  version is the latest release (the same question your browser asks when you open the
+  releases page; nothing about you or your files goes with it) and tells you when there is
+  a newer one. Downloading it is up to you ([`internal/update`](internal/update/update.go)).
+  A build of your own never asks.
 
 You can sign any computer out from Archive NL under **Wat ik deel**, and whoever runs the
 archive can switch a client off.

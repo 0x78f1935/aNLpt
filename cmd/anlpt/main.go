@@ -29,11 +29,13 @@ import (
 
 	"github.com/0x78f1935/aNLpt/internal/api"
 	"github.com/0x78f1935/aNLpt/internal/auth"
+	"github.com/0x78f1935/aNLpt/internal/autostart"
 	"github.com/0x78f1935/aNLpt/internal/browser"
 	"github.com/0x78f1935/aNLpt/internal/config"
 	"github.com/0x78f1935/aNLpt/internal/share"
 	"github.com/0x78f1935/aNLpt/internal/tray"
 	"github.com/0x78f1935/aNLpt/internal/ui"
+	"github.com/0x78f1935/aNLpt/internal/update"
 )
 
 // version is set when a release is built (-ldflags "-X main.version=1.2.3").
@@ -101,7 +103,13 @@ func run(background, headless bool, server string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pages := &ui.Server{Config: store, Session: session, Engine: engine, Version: version}
+	// Whether a newer aNLpt is out: GitHub is asked once a day, never the archive.
+	releases := &update.Checker{
+		Current: version, UserAgent: userAgent, HTTP: &http.Client{Timeout: time.Minute},
+		URL: update.Latest, First: time.Minute, Every: 24 * time.Hour,
+	}
+	go releases.Run(ctx)
+	pages := &ui.Server{Config: store, Session: session, Engine: engine, Version: version, Update: releases}
 	if !headless {
 		pages.PickFolder = func() (string, error) {
 			path, err := zenity.SelectFile(zenity.Directory(), zenity.Title("aNLpt"))
@@ -138,6 +146,11 @@ func run(background, headless bool, server string) error {
 		return nil
 	}
 
+	// Starting with the computer starts this very file: a newer version, downloaded
+	// somewhere else, takes over from the one it replaces.
+	if cfg.Autostart {
+		_ = autostart.Set(true)
+	}
 	if !background {
 		_ = browser.Open(address)
 	}
@@ -165,8 +178,27 @@ func run(background, headless bool, server string) error {
 		OnPause: engine.Pause,
 		OnQuit:  stop,
 		Tick:    tick,
+		Update: func() string {
+			if newer := releases.Newer(); newer != nil {
+				return newVersion(store.Get().Language, newer.Version)
+			}
+			return ""
+		},
+		OnUpdate: func() {
+			if newer := releases.Newer(); newer != nil {
+				_ = browser.Open(newer.URL)
+			}
+		},
 	})
 	return nil
+}
+
+// newVersion is the tray's line about a newer aNLpt, which opens its download page.
+func newVersion(language, version string) string {
+	if language == "en" {
+		return "Download aNLpt " + version
+	}
+	return "aNLpt " + version + " downloaden"
 }
 
 func trayTexts(language string) tray.Texts {

@@ -180,6 +180,9 @@ type Config struct {
 	// UploadKBps caps how fast files are sent, in kilobytes a second. Zero is no cap
 	// here; the archive paces what it passes on either way.
 	UploadKBps int `json:"upload_kbps"`
+	// Theme is the look the member last saw the archive in, kept so the page opens in it
+	// before the archive has answered (and while it cannot).
+	Theme string `json:"theme,omitempty"`
 }
 
 // Store reads and writes the configuration file, safely from several goroutines.

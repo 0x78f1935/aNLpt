@@ -889,6 +889,26 @@
     ])
   }
 
+  // The looks the archive comes in (themes.css): the page is drawn in the member's, and in
+  // the archive's own default where it has not heard of one (or of that one, yet).
+  const LOOKS = ['stream', 'teletekst', 'grafiet', 'licht', 'vhs', 'actieblok', 'neon', 'gala', 'ivoor', 'club', 'platina']
+
+  function drawTheme() {
+    const look = LOOKS.includes(state.theme) ? state.theme : 'stream'
+    if (document.documentElement.dataset.theme !== look) document.documentElement.dataset.theme = look
+  }
+
+  // A newer aNLpt is out (the program asks GitHub once a day): what it is, and where to get it.
+  function drawUpdate() {
+    const newer = state.update
+    const shown = Boolean(newer && newer.url.startsWith('https://github.com/'))
+    $('update').hidden = !shown
+    if (!shown) return
+    $('update-title').textContent = t('updateTitle', { version: newer.version })
+    $('update-text').textContent = t('updateText', { version: state.version })
+    $('update-link').href = newer.url
+  }
+
   function drawTexts() {
     if (drawn.get('texts') === language) return
     drawn.set('texts', language)
@@ -900,7 +920,9 @@
 
   function draw() {
     if (!state) return
+    drawTheme()
     drawTexts()
+    drawUpdate()
     const status = state.status
     const signedIn = status.state !== 'signed_out'
     $('welcome').hidden = signedIn
